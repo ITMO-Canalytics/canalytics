@@ -1,0 +1,32 @@
+{
+  "Message": {
+    "PositionReport": {
+      "Cog": 353.2,
+      "CommunicationState": 99931,
+      "Latitude": 1.2642716666666667,
+      "Longitude": 103.713555,
+      "MessageID": 1,
+      "NavigationalStatus": 5,
+      "PositionAccuracy": false,
+      "Raim": false,
+      "RateOfTurn": -128,
+      "RepeatIndicator": 0,
+      "Sog": 0.9,
+      "Spare": 0,
+      "SpecialManoeuvreIndicator": 0,
+      "Timestamp": 44,
+      "TrueHeading": 511,
+      "UserID": 566272000,
+      "Valid": true
+    }
+  },
+  "MessageType": "PositionReport",
+  "MetaData": {
+    "MMSI": 566272000,
+    "MMSI_String": 566272000,
+    "ShipName": "MAJU 511            ",
+    "latitude": 1.2642716666666667,
+    "longitude": 103.713555,
+    "time_utc": "2025-05-29 08:28:43.529530119 +0000 UTC"
+  }
+}
