@@ -4,6 +4,8 @@ import json
 import os
 from datetime import datetime, timezone
 from dotenv import load_dotenv
+from canalytics.config import config
+from canalytics.storage.db_loader import DataLoader
 
 load_dotenv()
 
@@ -37,16 +39,25 @@ class AISCollectorAsync:
                     print(f"[{datetime.now(timezone.utc)}] Ship: {data['UserID']} Lat: {data['Latitude']} Lon: {data['Longitude']}")
                     await self.save_data(message)
 
-    async def save_data(self, data):
+    async def save_data(self, message):
         timestamp = datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S_%f')
-        path = os.path.join(self.output_dir, f'ais_{timestamp}.json')
-        with open(path, 'w') as f:
-            json.dump(data, f, indent=2)
-        print(f"Saved to {path}")
+        if config.STORE_LOCALLY:
+            path = os.path.join(self.output_dir, f'ais_{timestamp}.json')
+            with open(path, 'w') as f:
+                json.dump(message, f, indent=2)
+            print(f"Saved to {path}")
 
     def run(self):
         asyncio.run(self.connect_and_collect())
 
 if __name__ == "__main__":
     collector = AISCollectorAsync()
-    collector.run()
+    data_loader = DataLoader()
+    # collector.run()
+    if config.STORE_CH:
+        # with open(r"..\data\raw\ais\ais_20250529_082843_558524.json") as f:
+        #     message = json.load(f)
+        #     data_loader.db_load_ais(message)
+        with open(r"..\data\raw\news\news_2025-05-29T08-20-22.json", 'r', encoding='utf-8') as f:
+            message = json.load(f)
+            data_loader.db_load_news(message)
