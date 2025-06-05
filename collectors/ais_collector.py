@@ -5,7 +5,7 @@ import os
 from datetime import datetime, timezone
 from dotenv import load_dotenv
 from canalytics.config import config
-from canalytics.storage.db_loader import DataLoader
+from canalytics.storage.db_loader_old import DataLoader
 
 load_dotenv()
 
