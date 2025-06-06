@@ -1,5 +1,5 @@
 """
-s3_loader.py - S3 storage utility for Canalytics project
+s3_loader.py - Simplified S3 storage utility for Canalytics project
 
 This module provides an S3Loader class for uploading, listing, and managing
 data files in AWS S3 buckets.
@@ -8,7 +8,6 @@ data files in AWS S3 buckets.
 import os
 import json
 import logging
-import traceback
 from typing import Dict, List, Union, Optional
 from pathlib import Path
 import boto3
@@ -86,7 +85,6 @@ class S3Loader:
             return False
         except Exception as e:
             logger.error(f"Unexpected error during S3 upload: {str(e)}")
-            traceback.print_exc()
             return False
 
     def upload_json(self, data: Union[Dict, List], s3_key: str) -> bool:
@@ -119,7 +117,6 @@ class S3Loader:
             return False
         except Exception as e:
             logger.error(f"Unexpected error during S3 JSON upload: {str(e)}")
-            traceback.print_exc()
             return False
 
     def list_files(self, prefix: str = "") -> List[Dict]:
@@ -154,7 +151,6 @@ class S3Loader:
             return []
         except Exception as e:
             logger.error(f"Unexpected error during S3 list: {str(e)}")
-            traceback.print_exc()
             return []
 
     def download_file(self, s3_key: str, local_path: str) -> bool:
@@ -180,7 +176,6 @@ class S3Loader:
             return False
         except Exception as e:
             logger.error(f"Unexpected error during S3 download: {str(e)}")
-            traceback.print_exc()
             return False
 
     def delete_file(self, s3_key: str) -> bool:
@@ -204,5 +199,4 @@ class S3Loader:
             return False
         except Exception as e:
             logger.error(f"Unexpected error during S3 delete: {str(e)}")
-            traceback.print_exc()
             return False

@@ -1,0 +1,21 @@
+{
+  "timestamp": "2025-06-06T16:34:49.463867",
+  "sync_period": "Last 1 days",
+  "since_date": "2025-06-05T16:27:49.926352+00:00",
+  "summary": {
+    "success_count": 887,
+    "failure_count": 0,
+    "total_count": 887,
+    "success_rate": 100.0
+  },
+  "details": {
+    "ais": {
+      "success": 878,
+      "failure": 0
+    },
+    "news": {
+      "success": 9,
+      "failure": 0
+    }
+  }
+}

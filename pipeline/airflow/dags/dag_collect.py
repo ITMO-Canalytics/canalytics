@@ -10,12 +10,9 @@ This DAG runs two tasks:
 from datetime import datetime, timedelta
 import os
 import sys
-import json
-from pathlib import Path
 
 from airflow import DAG
 from airflow.operators.python import PythonOperator
-from airflow.operators.bash import BashOperator
 
 # Add parent directory to path so we can import modules
 sys.path.insert(0, "/opt/airflow")
@@ -41,8 +38,6 @@ dag = DAG(
     tags=["canalytics", "data_collection"],
 )
 
-# Define tasks
-
 
 # Task to collect AIS data
 def collect_ais_data():
@@ -60,11 +55,8 @@ def collect_ais_data():
 
     async def run_with_timeout():
         try:
-            # Create a task for the collector
             task = asyncio.create_task(collector.connect_and_collect())
-            # Wait for 30 seconds
             await asyncio.sleep(30)
-            # Cancel the task
             task.cancel()
             try:
                 await task
@@ -98,12 +90,14 @@ def process_raw_data():
     from storage import S3Loader, ClickHouseLoader, process_directory
 
     # Initialize loaders
+    s3_loader = None
+    db_loader = None
+
     try:
         s3_loader = S3Loader()
         print("S3 Loader initialized")
     except Exception as e:
         print(f"Failed to initialize S3 loader: {str(e)}")
-        s3_loader = None
 
     try:
         db_loader = ClickHouseLoader(
@@ -114,12 +108,10 @@ def process_raw_data():
             password=os.getenv("CLICKHOUSE_PASSWORD", "canalytics_password"),
         )
         db_loader.connect()
-        # Create tables if they don't exist
         db_loader.create_tables()
         print("ClickHouse Loader initialized and tables created")
     except Exception as e:
         print(f"Failed to initialize ClickHouse loader: {str(e)}")
-        db_loader = None
 
     # Process all raw data files
     data_dir = "/opt/airflow/data/raw"

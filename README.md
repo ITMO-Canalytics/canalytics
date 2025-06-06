@@ -8,8 +8,6 @@ This project collects, processes, and analyzes shipping traffic data for major m
 
 ## Architecture
 
-![Architecture Diagram](https://i.imgur.com/placeholder.png)
-
 The project follows a modern data engineering architecture:
 
 1. **Data Collection**: Python scripts collect AIS data and news articles
