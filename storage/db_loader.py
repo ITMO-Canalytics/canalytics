@@ -7,7 +7,6 @@ into AWS S3 buckets and ClickHouse database by leveraging the S3Loader and Click
 
 import json
 import logging
-import traceback
 from pathlib import Path
 from typing import Dict, Optional
 
@@ -34,113 +33,74 @@ def load_file_to_s3_and_db(
 ) -> bool:
     """
     Load a file into S3 and ClickHouse database.
-
-    Args:
-        file_path: Path to the file to load
-        s3_loader: S3Loader instance (optional)
-        db_loader: ClickHouseLoader instance (optional)
-
-    Returns:
-        bool: True if successful, False otherwise
     """
     try:
-        file_path = Path(file_path)
-        if not file_path.exists():
-            logger.error(f"File not found: {file_path}")
-            return False
+        path = Path(file_path)
+        file_name = path.name
+        file_type = path.parent.name
 
-        # Load file content
-        with open(file_path, "r", encoding="utf-8") as f:
-            content = json.load(f)
-
-        # Determine file type based on path and content structure
-        file_type = None
-        if "news_" in file_path.name:
-            file_type = "news"
-        elif (
-            "ais_" in file_path.name
-            and isinstance(content, dict)
-            and "MessageType" in content
-        ):
-            file_type = "ais"
-        else:
-            logger.warning(f"Could not determine file type for: {file_path}")
-            return False
-
-        # Upload to S3 if loader provided
+        # Upload to S3 if loader is provided
+        s3_key = None
         if s3_loader:
-            s3_key = f"{file_type}/{file_path.name}"
-            if not s3_loader.upload_file(str(file_path), s3_key):
-                logger.warning(f"Failed to upload {file_path} to S3")
+            try:
+                s3_key = f"{file_type}/{file_name}"
+                s3_loader.upload_file(file_path, s3_key)
+                logger.info(f"Uploaded {file_path} to S3 key: {s3_key}")
+            except Exception as e:
+                logger.error(f"Failed to upload to S3: {str(e)}")
+                return False
 
-        # Insert into database if loader provided
-        # Note: Implementation for ClickHouse will be different
-        if db_loader and db_loader.client:
-            if file_type == "ais":
-                # Process AIS data for ClickHouse
-                # You would need to implement the appropriate logic for ClickHouse here
-                # For now, just return success
-                logger.info(f"Would process AIS data for ClickHouse: {file_path}")
-                return True
-            elif file_type == "news":
-                # Process news data for ClickHouse
-                # You would need to implement the appropriate logic for ClickHouse here
-                # For now, just return success
-                logger.info(f"Would process news data for ClickHouse: {file_path}")
-                return True
+        # Load to database if loader is provided
+        if db_loader:
+            try:
+                with open(file_path, "r") as f:
+                    data = json.load(f)
+
+                if file_type.lower() == "ais":
+                    # Handle AIS data
+                    if isinstance(data, list):
+                        db_loader.insert_vessel_positions(data)
+                    else:
+                        db_loader.insert_vessel_positions([data])
+                    logger.info(f"Inserted AIS data from {file_path}")
+                elif file_type.lower() == "news":
+                    # Handle news data
+                    if isinstance(data, list):
+                        db_loader.insert_news_articles(data)
+                    else:
+                        db_loader.insert_news_articles([data])
+                    logger.info(f"Inserted news data from {file_path}")
+                else:
+                    logger.warning(f"Unknown file type: {file_type}")
+                    return False
+            except Exception as e:
+                logger.error(f"Failed to load to database: {str(e)}")
+                return False
 
         return True
-
-    except json.JSONDecodeError:
-        logger.error(f"Invalid JSON in file: {file_path}")
-        return False
     except Exception as e:
         logger.error(f"Error processing file {file_path}: {str(e)}")
-        traceback.print_exc()
         return False
 
 
 def process_directory(
-    directory: str,
+    dir_path: str,
     s3_loader: Optional[S3Loader] = None,
     db_loader: Optional[ClickHouseLoader] = None,
-    recursive: bool = True,
 ) -> Dict[str, int]:
     """
-    Process all files in a directory, loading them to S3 and DB.
-
-    Args:
-        directory: Directory path to process
-        s3_loader: S3Loader instance (optional)
-        db_loader: ClickHouseLoader instance (optional)
-        recursive: Whether to process subdirectories
-
-    Returns:
-        Dict with success/failure counts
+    Process all files in directory and its subdirectories.
     """
-    dir_path = Path(directory)
-    if not dir_path.exists() or not dir_path.is_dir():
-        logger.error(f"Directory not found: {directory}")
-        return {"success": 0, "failure": 0}
+    success = 0
+    failure = 0
 
-    results = {"success": 0, "failure": 0}
+    for path in Path(dir_path).glob("**/*.json"):
+        if load_file_to_s3_and_db(str(path), s3_loader, db_loader):
+            success += 1
+        else:
+            failure += 1
 
-    for item in dir_path.iterdir():
-        if item.is_file() and item.suffix in [".json"]:
-            success = load_file_to_s3_and_db(str(item), s3_loader, db_loader)
-            if success:
-                results["success"] += 1
-            else:
-                results["failure"] += 1
-        elif recursive and item.is_dir():
-            sub_results = process_directory(str(item), s3_loader, db_loader, recursive)
-            results["success"] += sub_results["success"]
-            results["failure"] += sub_results["failure"]
-
-    logger.info(
-        f"Processed directory {directory}: {results['success']} successful, {results['failure']} failed"
-    )
-    return results
+    return {"success": success, "failure": failure}
 
 
 if __name__ == "__main__":

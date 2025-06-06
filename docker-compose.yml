@@ -59,6 +59,7 @@ services:
       - ./pipeline/airflow/dags:/opt/airflow/dags
       - ./collectors:/opt/airflow/collectors
       - ./storage:/opt/airflow/storage
+      - ./analysis:/opt/airflow/analysis
       - ./data:/opt/airflow/data
       - airflow_data:/opt/airflow
     ports:
@@ -101,6 +102,7 @@ services:
       - ./pipeline/airflow/dags:/opt/airflow/dags
       - ./collectors:/opt/airflow/collectors
       - ./storage:/opt/airflow/storage
+      - ./analysis:/opt/airflow/analysis
       - ./data:/opt/airflow/data
       - airflow_data:/opt/airflow
     command: ["scheduler"]

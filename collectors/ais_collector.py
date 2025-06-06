@@ -7,9 +7,10 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+
 class AISCollectorAsync:
-    def __init__(self, api_key=None, output_dir='data/raw/ais'):
-        self.api_key = api_key or os.getenv('AIS_TOKEN')
+    def __init__(self, api_key=None, output_dir="data/raw/ais"):
+        self.api_key = api_key or os.getenv("AIS_TOKEN")
         self.output_dir = output_dir
         os.makedirs(self.output_dir, exist_ok=True)
         self.ws_url = "wss://stream.aisstream.io/v0/stream"
@@ -23,9 +24,9 @@ class AISCollectorAsync:
                     [[8.8, -79.7], [9.5, -79.2]],
                     [[35.8, -6.4], [36.3, -5.5]],
                     [[41.0, 28.9], [41.3, 29.1]],
-                    [[1.0, 100.0], [3.0, 104.0]]
+                    [[1.0, 100.0], [3.0, 104.0]],
                 ],
-                "FilterMessageTypes": ["PositionReport"]
+                "FilterMessageTypes": ["PositionReport"],
             }
 
             await websocket.send(json.dumps(subscribe_message))
@@ -33,19 +34,22 @@ class AISCollectorAsync:
             async for message_json in websocket:
                 message = json.loads(message_json)
                 if message.get("MessageType") == "PositionReport":
-                    data = message['Message']['PositionReport']
-                    print(f"[{datetime.now(timezone.utc)}] Ship: {data['UserID']} Lat: {data['Latitude']} Lon: {data['Longitude']}")
+                    data = message["Message"]["PositionReport"]
+                    print(
+                        f"[{datetime.now(timezone.utc)}] Ship: {data['UserID']} Lat: {data['Latitude']} Lon: {data['Longitude']}"
+                    )
                     await self.save_data(message)
 
     async def save_data(self, data):
-        timestamp = datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S_%f')
-        path = os.path.join(self.output_dir, f'ais_{timestamp}.json')
-        with open(path, 'w') as f:
+        timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S_%f")
+        path = os.path.join(self.output_dir, f"ais_{timestamp}.json")
+        with open(path, "w") as f:
             json.dump(data, f, indent=2)
         print(f"Saved to {path}")
 
     def run(self):
         asyncio.run(self.connect_and_collect())
+
 
 if __name__ == "__main__":
     collector = AISCollectorAsync()

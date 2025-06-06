@@ -6,6 +6,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+
 class NewsCollector:
     def __init__(self):
         self.api_key = os.getenv("NEWS_API_KEY")
@@ -18,7 +19,7 @@ class NewsCollector:
             "q": "Suez Canal OR Panama Canal OR Strait of Gibraltar OR Bosporus Strait OR Strait of Malacca",
             "language": "en",
             "pageSize": 30,
-            "apiKey": self.api_key
+            "apiKey": self.api_key,
         }
 
         response = requests.get(url, params=params)
@@ -44,6 +45,7 @@ class NewsCollector:
             json.dump(articles, f, ensure_ascii=False, indent=2)
 
         print(f"Saved {len(articles)} news articles to {output_file}")
+
 
 if __name__ == "__main__":
     collector = NewsCollector()
