@@ -1,0 +1,12 @@
+{
+  "timestamp": "2025-06-06T16:21:27.859221",
+  "ais_etl": {
+    "records_processed": 2359,
+    "output_file": "/opt/airflow/data/processed/ais_processed_20250606_162116.csv"
+  },
+  "news_etl": {
+    "records_processed": 48,
+    "output_file": "/opt/airflow/data/processed/news_processed_20250606_162124.csv"
+  },
+  "total_records_processed": 2407
+}

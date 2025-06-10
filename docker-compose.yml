@@ -1,0 +1,139 @@
+services:
+  # ClickHouse database
+  clickhouse:
+    image: clickhouse/clickhouse-server:latest
+    ports:
+      - "${CLICKHOUSE_PORT:-8123}:8123" # HTTP interface
+      - "9000:9000" # Native interface
+    volumes:
+      - clickhouse_data:/var/lib/clickhouse
+    environment:
+      - CLICKHOUSE_DB=${CLICKHOUSE_DB:-canalytics}
+      - CLICKHOUSE_USER=${CLICKHOUSE_USER:-canalytics_user}
+      - CLICKHOUSE_PASSWORD=${CLICKHOUSE_PASSWORD:-canalytics_password}
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "wget",
+          "--no-verbose",
+          "--tries=1",
+          "--spider",
+          "http://localhost:8123/ping",
+        ]
+      interval: 5s
+      retries: 5
+
+  # Airflow components
+  airflow-webserver:
+    build:
+      context: .
+      dockerfile: pipeline/Dockerfile
+    restart: always
+    depends_on:
+      - clickhouse
+    environment:
+      # Required variables
+      - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=${AIRFLOW__DATABASE__SQL_ALCHEMY_CONN:-sqlite:////opt/airflow/airflow.db}
+      - AIRFLOW__CORE__EXECUTOR=${AIRFLOW__CORE__EXECUTOR:-SequentialExecutor}
+      - AIRFLOW__CORE__LOAD_EXAMPLES=${AIRFLOW__CORE__LOAD_EXAMPLES:-False}
+      - AIRFLOW_HOME=${AIRFLOW_HOME:-/opt/airflow}
+      - AIRFLOW__WEBSERVER__ADMIN_USER=${AIRFLOW__WEBSERVER__ADMIN_USER:-admin}
+      - AIRFLOW__WEBSERVER__ADMIN_PASSWORD=${AIRFLOW__WEBSERVER__ADMIN_PASSWORD:-admin}
+      - AIRFLOW__WEBSERVER__ADMIN_EMAIL=${AIRFLOW__WEBSERVER__ADMIN_EMAIL:-admin@example.com}
+      # ClickHouse variables
+      - CLICKHOUSE_HOST=${CLICKHOUSE_HOST:-clickhouse}
+      - CLICKHOUSE_PORT=${CLICKHOUSE_PORT:-8123}
+      - CLICKHOUSE_DB=${CLICKHOUSE_DB:-canalytics}
+      - CLICKHOUSE_USER=${CLICKHOUSE_USER:-canalytics_user}
+      - CLICKHOUSE_PASSWORD=${CLICKHOUSE_PASSWORD:-canalytics_password}
+      # API Keys
+      - NEWS_API_KEY=${NEWS_API_KEY:-your_news_api_key}
+      - AIS_TOKEN=${AIS_TOKEN:-your_ais_token}
+      # AWS Configuration
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID:-your_aws_access_key_id}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY:-your_aws_secret_access_key}
+      - AWS_REGION=${AWS_REGION:-us-east-1}
+      - CANALYTICS_S3_BUCKET=${CANALYTICS_S3_BUCKET:-canalytics-data}
+    volumes:
+      - ./pipeline/airflow/dags:/opt/airflow/dags
+      - ./collectors:/opt/airflow/collectors
+      - ./storage:/opt/airflow/storage
+      - ./analysis:/opt/airflow/analysis
+      - ./data:/opt/airflow/data
+      - airflow_data:/opt/airflow
+    ports:
+      - "${AIRFLOW_WEBSERVER_PORT:-8081}:8080"
+    command: ["webserver"]
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  airflow-scheduler:
+    build:
+      context: .
+      dockerfile: pipeline/Dockerfile
+    restart: always
+    depends_on:
+      - airflow-webserver
+    environment:
+      # Required variables
+      - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=${AIRFLOW__DATABASE__SQL_ALCHEMY_CONN:-sqlite:////opt/airflow/airflow.db}
+      - AIRFLOW__CORE__EXECUTOR=${AIRFLOW__CORE__EXECUTOR:-SequentialExecutor}
+      - AIRFLOW__CORE__LOAD_EXAMPLES=${AIRFLOW__CORE__LOAD_EXAMPLES:-False}
+      - AIRFLOW_HOME=${AIRFLOW_HOME:-/opt/airflow}
+      # ClickHouse variables
+      - CLICKHOUSE_HOST=${CLICKHOUSE_HOST:-clickhouse}
+      - CLICKHOUSE_PORT=${CLICKHOUSE_PORT:-8123}
+      - CLICKHOUSE_DB=${CLICKHOUSE_DB:-canalytics}
+      - CLICKHOUSE_USER=${CLICKHOUSE_USER:-canalytics_user}
+      - CLICKHOUSE_PASSWORD=${CLICKHOUSE_PASSWORD:-canalytics_password}
+      # API Keys
+      - NEWS_API_KEY=${NEWS_API_KEY:-your_news_api_key}
+      - AIS_TOKEN=${AIS_TOKEN:-your_ais_token}
+      # AWS Configuration
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID:-your_aws_access_key_id}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY:-your_aws_secret_access_key}
+      - AWS_REGION=${AWS_REGION:-us-east-1}
+      - CANALYTICS_S3_BUCKET=${CANALYTICS_S3_BUCKET:-canalytics-data}
+    volumes:
+      - ./pipeline/airflow/dags:/opt/airflow/dags
+      - ./collectors:/opt/airflow/collectors
+      - ./storage:/opt/airflow/storage
+      - ./analysis:/opt/airflow/analysis
+      - ./data:/opt/airflow/data
+      - airflow_data:/opt/airflow
+    command: ["scheduler"]
+
+  # Jupyter notebook server for analysis
+  jupyter:
+    build:
+      context: .
+      dockerfile: analysis/Dockerfile
+    volumes:
+      - ./analysis:/home/jovyan/analysis
+      - ./data:/home/jovyan/data
+      - ./storage:/home/jovyan/storage
+    environment:
+      # Required variables
+      - CLICKHOUSE_HOST=${CLICKHOUSE_HOST:-clickhouse}
+      - CLICKHOUSE_PORT=${CLICKHOUSE_PORT:-8123}
+      - CLICKHOUSE_DB=${CLICKHOUSE_DB:-canalytics}
+      - CLICKHOUSE_USER=${CLICKHOUSE_USER:-canalytics_user}
+      - CLICKHOUSE_PASSWORD=${CLICKHOUSE_PASSWORD:-canalytics_password}
+      # AWS Configuration
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID:-your_aws_access_key_id}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY:-your_aws_secret_access_key}
+      - AWS_REGION=${AWS_REGION:-us-east-1}
+      - CANALYTICS_S3_BUCKET=${CANALYTICS_S3_BUCKET:-canalytics-data}
+    ports:
+      - "${JUPYTER_PORT:-8888}:8888"
+    depends_on:
+      - clickhouse
+    command: "jupyter notebook --ip=${JUPYTER_HOST:-0.0.0.0} --port=8888 --no-browser --NotebookApp.token='${JUPYTER_TOKEN:-canalytics}' --NotebookApp.notebook_dir='${JUPYTER_NOTEBOOK_DIR:-/home/jovyan}'"
+
+volumes:
+  clickhouse_data:
+  airflow_data:
