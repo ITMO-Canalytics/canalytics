@@ -5,9 +5,3 @@
 .vscode/
 *.code-workspace
 data/*
-
-# Examples
-!data/processed/ais_processed_20250606_162116.csv
-!data/processed/news_processed_20250606_162124.csv
-!data/reports/etl_report_20250606_162127.json
-!data/reports/sync_report_20250606_163449.json

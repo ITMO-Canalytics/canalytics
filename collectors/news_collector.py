@@ -3,15 +3,18 @@ import requests
 import json
 from datetime import datetime, timezone
 from dotenv import load_dotenv
+from storage.s3_loader import S3Loader
 
 load_dotenv()
 
 
 class NewsCollector:
-    def __init__(self):
+    def __init__(self, s3_loader=None):
         self.api_key = os.getenv("NEWS_API_KEY")
         if not self.api_key:
             raise ValueError("NEWS_API_KEY not found in environment variables")
+
+        self.s3_loader = s3_loader or S3Loader()
 
     def collect(self):
         url = "https://newsapi.org/v2/everything"
@@ -37,14 +40,15 @@ class NewsCollector:
             return
 
         ts = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H-%M-%S")
-        output_dir = "data/raw/news"
-        os.makedirs(output_dir, exist_ok=True)
-        output_file = os.path.join(output_dir, f"news_{ts}.json")
+        s3_key = f"raw/news/news_{ts}.json"
 
-        with open(output_file, "w", encoding="utf-8") as f:
-            json.dump(articles, f, ensure_ascii=False, indent=2)
+        # Upload directly to S3 instead of creating local file
+        success = self.s3_loader.upload_json(articles, s3_key)
 
-        print(f"Saved {len(articles)} news articles to {output_file}")
+        if success:
+            print(f"Saved {len(articles)} news articles to S3: {s3_key}")
+        else:
+            print(f"Failed to save articles to S3: {s3_key}")
 
 
 if __name__ == "__main__":
