@@ -32,7 +32,7 @@ dag = DAG(
     "canalytics_collect_ais_data",
     default_args=default_args,
     description="Collect AIS data for Canalytics",
-    schedule_interval=timedelta(hours=6),
+    schedule_interval=timedelta(minutes=10),
     start_date=datetime(2025, 5, 30),
     catchup=False,
     tags=["canalytics", "data_collection"],

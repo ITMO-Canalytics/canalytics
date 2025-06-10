@@ -32,7 +32,7 @@ dag = DAG(
     "canalytics_sync_s3_to_clickhouse",
     default_args=default_args,
     description="Sync data from S3 to ClickHouse for Canalytics",
-    schedule_interval=timedelta(hours=6),  # Run every 6 hours
+    schedule_interval=timedelta(minutes=30),
     start_date=datetime(2025, 5, 30),
     catchup=False,
     tags=["canalytics", "data_sync"],
