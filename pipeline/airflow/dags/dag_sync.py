@@ -94,12 +94,7 @@ def sync_all_data():
             since=since_date, s3_loader=s3_loader, db_loader=db_loader
         )
 
-        # Create report file
-        os.makedirs("/opt/airflow/data/reports", exist_ok=True)
-        report_time = datetime.now().strftime("%Y%m%d_%H%M%S")
-        report_path = f"/opt/airflow/data/reports/sync_report_{report_time}.json"
-
-        # Prepare report
+        # Prepare report (log only, no local file storage)
         success_count = sum(
             type_result.get("success", 0) for type_result in results.values()
         )
@@ -116,21 +111,20 @@ def sync_all_data():
                 "success_count": success_count,
                 "failure_count": failure_count,
                 "total_count": total_count,
-                "success_rate": round((success_count / total_count) * 100, 2)
-                if total_count > 0
-                else 100,
+                "success_rate": (
+                    round((success_count / total_count) * 100, 2)
+                    if total_count > 0
+                    else 100
+                ),
             },
             "details": results,
         }
 
-        # Save report
-        with open(report_path, "w") as f:
-            json.dump(report, f, indent=2, default=str)
-
-        logger.info(f"Sync report generated: {report_path}")
+        # Log report instead of saving to file
         logger.info(
-            f"Summary: {success_count} succeeded, {failure_count} failed out of {total_count} total"
+            f"Sync completed - Summary: {success_count} succeeded, {failure_count} failed out of {total_count} total"
         )
+        logger.info(f"Sync report details: {json.dumps(report, indent=2, default=str)}")
 
         # Log detailed results
         for data_type, counts in results.items():
@@ -142,27 +136,8 @@ def sync_all_data():
 
     except Exception as e:
         logger.error(f"Error in sync process: {str(e)}")
-        # Try to create an error report
-        try:
-            os.makedirs("/opt/airflow/data/reports", exist_ok=True)
-            report_time = datetime.now().strftime("%Y%m%d_%H%M%S")
-            error_report_path = (
-                f"/opt/airflow/data/reports/sync_error_{report_time}.json"
-            )
-
-            error_report = {
-                "timestamp": datetime.now().isoformat(),
-                "error": str(e),
-                "status": "failed",
-            }
-
-            with open(error_report_path, "w") as f:
-                json.dump(error_report, f, indent=2, default=str)
-
-            logger.info(f"Error report generated: {error_report_path}")
-        except Exception as report_error:
-            logger.error(f"Failed to create error report: {str(report_error)}")
-
+        # Log error instead of saving to file
+        logger.error(f"Sync failed with error: {str(e)}")
         raise
     finally:
         # Ensure proper cleanup

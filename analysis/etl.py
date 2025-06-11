@@ -36,7 +36,6 @@ class CanalyticsETL:
         database: Optional[str] = None,
         user: Optional[str] = None,
         password: Optional[str] = None,
-        output_dir: str = "data/processed",
         save_to_clickhouse: bool = True,
     ):
         """
@@ -48,7 +47,6 @@ class CanalyticsETL:
             database: Database name
             user: Database username
             password: Database password
-            output_dir: Directory to save processed data
             save_to_clickhouse: Whether to save processed data to ClickHouse
         """
         # ClickHouse connection parameters
@@ -57,10 +55,6 @@ class CanalyticsETL:
         self.database = database or os.getenv("CLICKHOUSE_DB", "default")
         self.user = user or os.getenv("CLICKHOUSE_USER", "default")
         self.password = password or os.getenv("CLICKHOUSE_PASSWORD", "")
-
-        # Output directory
-        self.output_dir = output_dir
-        os.makedirs(self.output_dir, exist_ok=True)
 
         # ClickHouse saving option
         self.save_to_clickhouse = save_to_clickhouse
@@ -76,7 +70,7 @@ class CanalyticsETL:
                 password=self.password,
             )
 
-        logger.info(f"ETL initialized with output directory: {self.output_dir}")
+        logger.info("ETL initialized - data will be processed in memory only")
         if self.save_to_clickhouse:
             logger.info("ClickHouse loading enabled for processed data")
 
@@ -285,65 +279,49 @@ class CanalyticsETL:
             logger.error(f"Error transforming news data: {str(e)}")
             return df
 
-    def save_processed_data(self, df: pd.DataFrame, name: str) -> str:
+    def save_processed_data(self, df: pd.DataFrame, name: str) -> bool:
         """
-        Save processed data to CSV and optionally to ClickHouse.
+        Save processed data to ClickHouse only (no local files).
 
         Args:
             df: DataFrame to save
-            name: Name for the file and data type
+            name: Name for the data type
 
         Returns:
-            Path to the saved file
+            True if successful, False otherwise
         """
         if df.empty:
             logger.warning(f"Cannot save empty DataFrame: {name}")
-            return ""
+            return False
 
-        try:
-            # Create filename with timestamp
-            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            filename = f"{name}_{timestamp}.csv"
-            filepath = os.path.join(self.output_dir, filename)
+        # Save to ClickHouse if enabled
+        if self.save_to_clickhouse and self.clickhouse_loader:
+            try:
+                self.clickhouse_loader.connect()
 
-            # Save to CSV
-            df.to_csv(filepath, index=False)
-            logger.info(f"Saved processed data to CSV: {filepath}")
+                if "ais" in name.lower():
+                    self.clickhouse_loader.insert_processed_vessel_positions(df)
+                    logger.info(f"Saved {len(df)} processed AIS records to ClickHouse")
+                elif "news" in name.lower():
+                    self.clickhouse_loader.insert_processed_news_articles(df)
+                    logger.info(f"Saved {len(df)} processed news records to ClickHouse")
+                else:
+                    logger.warning(f"Unknown data type for ClickHouse saving: {name}")
+                    return False
 
-            # Save to ClickHouse if enabled
-            if self.save_to_clickhouse and self.clickhouse_loader:
-                try:
-                    self.clickhouse_loader.connect()
+                return True
 
-                    if "ais" in name.lower():
-                        self.clickhouse_loader.insert_processed_vessel_positions(df)
-                        logger.info(
-                            f"Saved {len(df)} processed AIS records to ClickHouse"
-                        )
-                    elif "news" in name.lower():
-                        self.clickhouse_loader.insert_processed_news_articles(df)
-                        logger.info(
-                            f"Saved {len(df)} processed news records to ClickHouse"
-                        )
-                    else:
-                        logger.warning(
-                            f"Unknown data type for ClickHouse saving: {name}"
-                        )
-
-                except Exception as e:
-                    logger.error(
-                        f"Failed to save processed data to ClickHouse: {str(e)}"
-                    )
-                    # Don't raise exception - CSV saving succeeded
-                finally:
-                    if self.clickhouse_loader:
-                        self.clickhouse_loader.disconnect()
-
-            return filepath
-
-        except Exception as e:
-            logger.error(f"Error saving processed data: {str(e)}")
-            return ""
+            except Exception as e:
+                logger.error(f"Failed to save processed data to ClickHouse: {str(e)}")
+                return False
+            finally:
+                if self.clickhouse_loader:
+                    self.clickhouse_loader.disconnect()
+        else:
+            logger.info(
+                f"Processed {len(df)} {name} records (ClickHouse saving disabled)"
+            )
+            return True
 
     def initialize_processed_tables(self) -> None:
         """Initialize processed data tables in ClickHouse."""
@@ -395,12 +373,12 @@ class CanalyticsETL:
         finally:
             self.clickhouse_loader.disconnect()
 
-    def run_ais_etl_pipeline(self) -> Tuple[pd.DataFrame, str]:
+    def run_ais_etl_pipeline(self) -> Tuple[pd.DataFrame, bool]:
         """
         Run the ETL pipeline for AIS data.
 
         Returns:
-            Tuple of (processed DataFrame, output filepath)
+            Tuple of (processed DataFrame, success status)
         """
         # Extract
         raw_df = self.extract_ais_data()
@@ -409,16 +387,16 @@ class CanalyticsETL:
         processed_df = self.transform_ais_data(raw_df)
 
         # Load
-        output_file = self.save_processed_data(processed_df, "ais_processed")
+        success = self.save_processed_data(processed_df, "ais_processed")
 
-        return processed_df, output_file
+        return processed_df, success
 
-    def run_news_etl_pipeline(self) -> Tuple[pd.DataFrame, str]:
+    def run_news_etl_pipeline(self) -> Tuple[pd.DataFrame, bool]:
         """
         Run the ETL pipeline for news data.
 
         Returns:
-            Tuple of (processed DataFrame, output filepath)
+            Tuple of (processed DataFrame, success status)
         """
         # Extract
         raw_df = self.extract_news_data()
@@ -427,9 +405,9 @@ class CanalyticsETL:
         processed_df = self.transform_news_data(raw_df)
 
         # Load
-        output_file = self.save_processed_data(processed_df, "news_processed")
+        success = self.save_processed_data(processed_df, "news_processed")
 
-        return processed_df, output_file
+        return processed_df, success
 
 
 if __name__ == "__main__":
@@ -437,9 +415,11 @@ if __name__ == "__main__":
     etl = CanalyticsETL()
 
     # Run AIS pipeline
-    ais_df, ais_file = etl.run_ais_etl_pipeline()
-    print(f"AIS ETL complete. Processed {len(ais_df)} records. Saved to {ais_file}")
+    ais_df, ais_success = etl.run_ais_etl_pipeline()
+    print(f"AIS ETL complete. Processed {len(ais_df)} records. Success: {ais_success}")
 
     # Run news pipeline
-    news_df, news_file = etl.run_news_etl_pipeline()
-    print(f"News ETL complete. Processed {len(news_df)} records. Saved to {news_file}")
+    news_df, news_success = etl.run_news_etl_pipeline()
+    print(
+        f"News ETL complete. Processed {len(news_df)} records. Success: {news_success}"
+    )

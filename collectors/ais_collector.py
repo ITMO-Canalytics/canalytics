@@ -4,15 +4,15 @@ import json
 import os
 from datetime import datetime, timezone
 from dotenv import load_dotenv
+from storage.s3_loader import S3Loader
 
 load_dotenv()
 
 
 class AISCollectorAsync:
-    def __init__(self, api_key=None, output_dir="data/raw/ais"):
+    def __init__(self, api_key=None, s3_loader=None):
         self.api_key = api_key or os.getenv("AIS_TOKEN")
-        self.output_dir = output_dir
-        os.makedirs(self.output_dir, exist_ok=True)
+        self.s3_loader = s3_loader or S3Loader()
         self.ws_url = "wss://stream.aisstream.io/v0/stream"
 
     async def connect_and_collect(self):
@@ -42,10 +42,15 @@ class AISCollectorAsync:
 
     async def save_data(self, data):
         timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S_%f")
-        path = os.path.join(self.output_dir, f"ais_{timestamp}.json")
-        with open(path, "w") as f:
-            json.dump(data, f, indent=2)
-        print(f"Saved to {path}")
+        s3_key = f"raw/ais/ais_{timestamp}.json"
+
+        # Upload directly to S3 instead of creating local file
+        success = self.s3_loader.upload_json(data, s3_key)
+
+        if success:
+            print(f"Saved to S3: {s3_key}")
+        else:
+            print(f"Failed to save to S3: {s3_key}")
 
     def run(self):
         asyncio.run(self.connect_and_collect())

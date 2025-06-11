@@ -44,31 +44,24 @@ def collect_news_data():
     """Run the news collector to fetch maritime news articles."""
     from collectors.news_collector import NewsCollector
 
-    # Create output directory if it doesn't exist
-    os.makedirs("/opt/airflow/data/raw/news", exist_ok=True)
-
-    # Run the collector
+    # Run the collector (data goes directly to S3)
     collector = NewsCollector()
     collector.collect()
     return True
 
 
-# Task to process raw data
-def process_raw_data():
-    """Process raw data files and load to S3 and ClickHouse."""
-    from storage import S3Loader, ClickHouseLoader, process_directory
+# Task to validate data collection
+def validate_data_collection():
+    """Validate that news data was collected and stored properly."""
+    import logging
+    from storage import ClickHouseLoader
 
-    # Initialize loaders
-    s3_loader = None
-    db_loader = None
-
-    try:
-        s3_loader = S3Loader()
-        print("S3 Loader initialized")
-    except Exception as e:
-        print(f"Failed to initialize S3 loader: {str(e)}")
+    # Configure logging
+    logging.basicConfig(level=logging.INFO)
+    logger = logging.getLogger(__name__)
 
     try:
+        # Initialize ClickHouse loader to check data
         db_loader = ClickHouseLoader(
             host=os.getenv("CLICKHOUSE_HOST", "clickhouse"),
             port=int(os.getenv("CLICKHOUSE_PORT", "8123")),
@@ -77,26 +70,34 @@ def process_raw_data():
             password=os.getenv("CLICKHOUSE_PASSWORD", "canalytics_password"),
         )
         db_loader.connect()
-        db_loader.create_tables()
-        print("ClickHouse Loader initialized and tables created")
-    except Exception as e:
-        print(f"Failed to initialize ClickHouse loader: {str(e)}")
 
-    # Process all raw data files
-    data_dir = "/opt/airflow/data/raw/news"
-    if os.path.exists(data_dir):
-        results = process_directory(data_dir, s3_loader, db_loader)
-        print(
-            f"Processed {results['success']} files successfully, {results['failure']} failed"
+        # Check recent news data (last 24 hours)
+        from datetime import datetime, timedelta
+
+        one_day_ago = datetime.now() - timedelta(days=1)
+
+        # Query to count recent records
+        query = """
+        SELECT COUNT(*) as count 
+        FROM news_articles 
+        WHERE created_at > %(start_date)s
+        """
+
+        result = db_loader.client.query_df(
+            query, parameters={"start_date": one_day_ago.strftime("%Y-%m-%d %H:%M:%S")}
         )
-    else:
-        print(f"Data directory not found: {data_dir}")
+        count = result["count"].iloc[0] if not result.empty else 0
 
-    # Close the ClickHouse connection
-    if db_loader:
+        logger.info(f"Found {count} news articles collected in the last 24 hours")
+
+        # Close the connection
         db_loader.disconnect()
 
-    return True
+        return {"articles_collected": count, "validation_successful": True}
+
+    except Exception as e:
+        logger.error(f"Validation failed: {str(e)}")
+        return {"articles_collected": 0, "validation_successful": False}
 
 
 # Create the tasks
@@ -107,8 +108,8 @@ news_collection_task = PythonOperator(
 )
 
 process_data_task = PythonOperator(
-    task_id="process_raw_data",
-    python_callable=process_raw_data,
+    task_id="validate_data_collection",
+    python_callable=validate_data_collection,
     dag=dag,
 )
 

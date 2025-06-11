@@ -50,7 +50,8 @@ class ClickHouseLoader:
         """Create necessary tables if they don't exist."""
         try:
             # Create vessels table
-            self.client.command("""
+            self.client.command(
+                """
                 CREATE TABLE IF NOT EXISTS vessels (
                     mmsi UInt32,
                     name String,
@@ -62,10 +63,12 @@ class ClickHouseLoader:
                     updated_at DateTime DEFAULT now()
                 ) ENGINE = MergeTree()
                 ORDER BY (mmsi, created_at)
-            """)
+            """
+            )
 
             # Create vessel_positions table
-            self.client.command("""
+            self.client.command(
+                """
                 CREATE TABLE IF NOT EXISTS vessel_positions (
                     mmsi UInt32,
                     timestamp DateTime,
@@ -76,10 +79,12 @@ class ClickHouseLoader:
                     created_at DateTime DEFAULT now()
                 ) ENGINE = MergeTree()
                 ORDER BY (mmsi, timestamp)
-            """)
+            """
+            )
 
             # Create canal_transits table
-            self.client.command("""
+            self.client.command(
+                """
                 CREATE TABLE IF NOT EXISTS canal_transits (
                     transit_id String,
                     mmsi UInt32,
@@ -89,10 +94,12 @@ class ClickHouseLoader:
                     created_at DateTime DEFAULT now()
                 ) ENGINE = MergeTree()
                 ORDER BY (transit_id, entry_time)
-            """)
+            """
+            )
 
             # Create news_articles table
-            self.client.command("""
+            self.client.command(
+                """
                 CREATE TABLE IF NOT EXISTS news_articles (
                     article_id String,
                     title String,
@@ -107,10 +114,12 @@ class ClickHouseLoader:
                     created_at DateTime DEFAULT now()
                 ) ENGINE = MergeTree()
                 ORDER BY (published_at, article_id)
-            """)
+            """
+            )
 
             # Create vessel_positions_processed table for ETL-transformed AIS data
-            self.client.command("""
+            self.client.command(
+                """
                 CREATE TABLE IF NOT EXISTS vessel_positions_processed (
                     mmsi UInt32,
                     timestamp DateTime,
@@ -126,10 +135,12 @@ class ClickHouseLoader:
                     processed_at DateTime DEFAULT now()
                 ) ENGINE = MergeTree()
                 ORDER BY (date, mmsi, timestamp)
-            """)
+            """
+            )
 
             # Create news_articles_processed table for ETL-transformed news data
-            self.client.command("""
+            self.client.command(
+                """
                 CREATE TABLE IF NOT EXISTS news_articles_processed (
                     article_id String,
                     title String,
@@ -148,7 +159,8 @@ class ClickHouseLoader:
                     processed_at DateTime DEFAULT now()
                 ) ENGINE = MergeTree()
                 ORDER BY (publication_date, article_id)
-            """)
+            """
+            )
 
             logger.info("Created ClickHouse tables including processed data tables")
         except ClickHouseError as e:
