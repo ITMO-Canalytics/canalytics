@@ -30,7 +30,10 @@ canalytics/
 │   ├── Dockerfile              # Container for collectors
 │   └── airflow/                # Airflow DAGs and configs
 │       └── dags/
-│           └── dag_collect.py
+│           └── dag_collect_ais.py
+│           └── dag_collect_news.py
+│           └── dag_etl.py
+│           └── dag_sync.py
 ├── storage/                    # Storage utilities
 │   ├── s3_loader.py            # S3 storage operations
 │   ├── clickhouse_loader.py    # ClickHouse database operations
@@ -41,12 +44,7 @@ canalytics/
 │   └── notebooks/              # Jupyter notebooks with exploratory analysis
 │       └── suez_canal_analysis.ipynb
 ├── report/                     # Report and slides
-│   ├── report.md               # Markdown source for report
-│   └── slides/                 # Reveal.js slide deck
-├── tests/                      # Unit and integration tests
-├── .github/                    # CI/CD workflows
-│   └── workflows/
-│       └── ci.yml
+│   └── report.md               # Markdown source for report
 ├── docker-compose.yml          # Local development orchestration
 ├── requirements.txt            # Python dependencies
 └── README.md                   # Project overview and setup instructions
@@ -79,7 +77,7 @@ canalytics/
 3. Start the services:
 
    ```bash
-   docker-compose up -d
+    make build && make start
    ```
 
 4. Access the services:
@@ -91,8 +89,8 @@ canalytics/
 
 ### Running the Pipeline
 
-1. In Airflow, enable the `canalytics_collect_data` DAG
-2. The DAG will run daily, collecting fresh data
+1. In Airflow, enable the `canalytics_collect_ais_data` DAG
+2. The DAG will run every 10 minutes, collecting fresh ais data
 3. Manually trigger the DAG for immediate execution
 
 ### Analyzing Data
