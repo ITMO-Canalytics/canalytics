@@ -130,21 +130,28 @@ class S3Loader:
             List of file information dictionaries
         """
         try:
-            response = self.s3_client.list_objects_v2(
-                Bucket=self.bucket_name, Prefix=prefix
-            )
+            # Use paginator to handle more than 1000 objects
+            paginator = self.s3_client.get_paginator("list_objects_v2")
+            page_iterator = paginator.paginate(Bucket=self.bucket_name, Prefix=prefix)
 
-            if "Contents" not in response:
-                return []
+            all_files = []
+            total_count = 0
 
-            return [
-                {
-                    "key": item["Key"],
-                    "size": item["Size"],
-                    "last_modified": item["LastModified"],
-                }
-                for item in response["Contents"]
-            ]
+            for page in page_iterator:
+                if "Contents" in page:
+                    page_files = [
+                        {
+                            "key": item["Key"],
+                            "size": item["Size"],
+                            "last_modified": item["LastModified"],
+                        }
+                        for item in page["Contents"]
+                    ]
+                    all_files.extend(page_files)
+                    total_count += len(page_files)
+
+            logger.info(f"Found {total_count} files with prefix '{prefix}'")
+            return all_files
 
         except ClientError as e:
             logger.error(f"S3 list error: {str(e)}")
