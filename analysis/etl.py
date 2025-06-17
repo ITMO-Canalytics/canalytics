@@ -84,7 +84,7 @@ class CanalyticsETL:
             password=self.password,
         )
 
-    def extract_ais_data(self, days: int = 60) -> pd.DataFrame:
+    def extract_ais_data(self, days: int = 1) -> pd.DataFrame:
         """
         Extract AIS data from ClickHouse.
 
@@ -127,7 +127,7 @@ class CanalyticsETL:
             if "client" in locals():
                 client.close()
 
-    def extract_news_data(self, days: int = 60) -> pd.DataFrame:
+    def extract_news_data(self, days: int = 1) -> pd.DataFrame:
         """
         Extract news data from ClickHouse.
 

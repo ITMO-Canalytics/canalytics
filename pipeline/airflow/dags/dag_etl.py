@@ -39,7 +39,7 @@ dag = DAG(
     "canalytics_etl_processing",
     default_args=default_args,
     description="ETL processing for Canalytics data",
-    schedule_interval=timedelta(hours=6),
+    schedule_interval=timedelta(days=1),
     start_date=datetime(2025, 5, 30),
     catchup=False,
     tags=["canalytics", "etl"],
