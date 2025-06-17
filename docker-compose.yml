@@ -56,7 +56,7 @@ services:
       - AWS_REGION=${AWS_REGION:-us-east-1}
       - CANALYTICS_S3_BUCKET=${CANALYTICS_S3_BUCKET:-canalytics-data}
       # Sync Settings
-      - SYNC_LOOKBACK_DAYS=${SYNC_LOOKBACK_DAYS:-60}
+      - SYNC_LOOKBACK_DAYS=${SYNC_LOOKBACK_DAYS:-1}
       - SYNC_MAX_RETRIES=${SYNC_MAX_RETRIES:-3}
       - SYNC_RETRY_DELAY=${SYNC_RETRY_DELAY:-5}
       # ETL Settings
@@ -105,7 +105,7 @@ services:
       - AWS_REGION=${AWS_REGION:-us-east-1}
       - CANALYTICS_S3_BUCKET=${CANALYTICS_S3_BUCKET:-canalytics-data}
       # Sync Settings
-      - SYNC_LOOKBACK_DAYS=${SYNC_LOOKBACK_DAYS:-60}
+      - SYNC_LOOKBACK_DAYS=${SYNC_LOOKBACK_DAYS:-1}
       - SYNC_MAX_RETRIES=${SYNC_MAX_RETRIES:-3}
       - SYNC_RETRY_DELAY=${SYNC_RETRY_DELAY:-5}
       # ETL Settings
