@@ -84,7 +84,7 @@ class CanalyticsETL:
             password=self.password,
         )
 
-    def extract_ais_data(self, days: int = 7) -> pd.DataFrame:
+    def extract_ais_data(self, days: int = 12) -> pd.DataFrame:
         """
         Extract AIS data from ClickHouse.
 
