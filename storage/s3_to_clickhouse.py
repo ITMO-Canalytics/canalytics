@@ -222,12 +222,12 @@ def sync_all_data(
 
     # Sync AIS data
     results["ais"] = sync_utility.sync_from_s3(
-        prefix="ais/", since=since, limit=limit_per_type
+        prefix="raw/ais/", since=since, limit=limit_per_type
     )
 
     # Sync news data
     results["news"] = sync_utility.sync_from_s3(
-        prefix="news/", since=since, limit=limit_per_type
+        prefix="raw/news/", since=since, limit=limit_per_type
     )
 
     return results
