@@ -44,8 +44,9 @@ class AISCollectorAsync:
                     if message.get("MessageType") == "PositionReport":
                         self.message_count += 1
                         data = message["Message"]["PositionReport"]
+                        time_stamp = message["MetaData"]["time_utc"]
                         logger.info(
-                            f"[{self.message_count}] Ship: {data['UserID']} Lat: {data['Latitude']} Lon: {data['Longitude']}"
+                            f"[{self.message_count}] timestamp: {time_stamp}, Ship: {data['UserID']} Lat: {data['Latitude']} Lon: {data['Longitude']}"
                         )
                         await self.save_data(message)
 
